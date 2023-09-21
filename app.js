@@ -49,27 +49,21 @@ const userSchema = new mongoose.Schema({
   lastLogin: Date,
 });
 
-const User = mongoose.model("User", userSchema);
-
-// Create a new user
-app.post("/users", async (req, res) => {
-  console.log(req.body);
-  try {
-    const newUser = new User({
-      ...req.body,
-      isActive: false,
-      planHistory: [],
-      activePlan: null,
-      joinedDate: new Date(),
-      lastLogin: new Date(),
-      id: Math.floor(Math.random() * 1000000), // Generate a random number for id
-    });
-    const result = await newUser.save();
-    res.send(result);
-  } catch (err) {
-    console.log(err);
-  }
+const adminSchema = new mongoose.Schema({
+  username: String,
+  password: String,
 });
+
+const PlanSchema = new mongoose.Schema({
+  name: String,
+  price: String,
+  validity: String,
+  description: String,
+});
+
+const User = mongoose.model("User", userSchema);
+const Admin = mongoose.model("Admin", adminSchema);
+const Plan = mongoose.model("Plan", PlanSchema);
 
 //authenticate
 app.post("/authenticate", async (req, res) => {
@@ -90,6 +84,36 @@ app.post("/authenticate", async (req, res) => {
   }
 });
 
+//get all users
+app.get("/users", async (req, res) => {
+  console.log("Get all users requested");
+  try {
+    const result = await User.find();
+    res.send(result);
+  } catch (err) {
+    console.log(err);
+  }
+});
+
+// Create a new user
+app.post("/users", async (req, res) => {
+  console.log(req.body);
+  try {
+    const newUser = new User({
+      ...req.body,
+      isActive: false,
+      planHistory: [],
+      activePlan: null,
+      joinedDate: new Date(),
+      lastLogin: new Date(),
+      id: Math.floor(Math.random() * 1000000), // Generate a random number for id
+    });
+    const result = await newUser.save();
+    res.send(result);
+  } catch (err) {
+    console.log(err);
+  }
+});
 
 // Update user details
 app.put("/users/:id", async (req, res) => {
@@ -135,6 +159,95 @@ app.get("/users/:id", async (req, res) => {
 app.delete("/users/:id", async (req, res) => {
   const result = await User.deleteOne({ id: req.params.id });
   res.send(result);
+});
+
+//admin-login
+app.post("/api/login", async (req, res) => {
+  console.log("Login requested");
+  const { username, password } = req.body;
+  try {
+    const admin = await Admin.findOne({ username, password });
+    if (admin) {
+      res.json({ success: true });
+    } else {
+      res.status(401).json({ success: false, message: "Invalid credentials" });
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+});
+
+//add plan
+app.post("/api/plans", async (req, res) => {
+  console.log("New plan requested");
+  const { name, price, validity, description } = req.body;
+
+  try {
+    const newPlan = new Plan({
+      name,
+      price,
+      validity,
+      description,
+    });
+
+    const savedPlan = await newPlan.save();
+    res.status(200).json(savedPlan);
+  } catch (error) {
+    console.error("Error adding plan:", error);
+    res.status(500).json({ error: "Could not save the plan." });
+  }
+});
+
+//update plan
+app.put("/api/plans/:id", async (req, res) => {
+  const planId = req.params.id;
+  const updatedPlan = req.body;
+
+  try {
+    const result = await Plan.findByIdAndUpdate(planId, updatedPlan, {
+      new: true,
+    });
+
+    if (result) {
+      res.status(200).json(result);
+    } else {
+      res.status(404).json({ error: "Plan not found" });
+    }
+  } catch (error) {
+    console.error("Error updating plan:", error);
+    res.status(500).json({ error: "Could not update the plan." });
+  }
+});
+
+//delete all plans
+app.delete("/api/plans/:id", async (req, res) => {
+  const planId = req.params.id;
+
+  try {
+    const result = await Plan.findByIdAndDelete(planId);
+
+    if (result) {
+      res.status(200).json({ message: "Plan deleted successfully" });
+    } else {
+      res.status(404).json({ error: "Plan not found" });
+    }
+  } catch (error) {
+    console.error("Error deleting plan:", error);
+    res.status(500).json({ error: "Could not delete the plan." });
+  }
+});
+
+//get all plans
+app.get("/api/plans", async (req, res) => {
+  console.log("Get all plans requested");
+  try {
+    const result = await Plan.find();
+    res.status(200).json(result);
+  } catch (error) {
+    console.error("Error getting plans:", error);
+    res.status(500).json({ error: "Could not get the plans." });
+  }
 });
 
 app.listen(3000, () => console.log("Server started on port 3000"));
