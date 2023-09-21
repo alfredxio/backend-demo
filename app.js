@@ -68,6 +68,7 @@ const Plan = mongoose.model("Plan", PlanSchema);
 //authenticate
 app.post("/authenticate", async (req, res) => {
   const { email, password } = req.body;
+  console.log("login requested", email, password);
   try {
     const user = await User.findOne({ email });
     if (!user) {
@@ -79,7 +80,7 @@ app.post("/authenticate", async (req, res) => {
       return res.json({ success: false, message: "Authentication failed" });
     }
   } catch (err) {
-    console.error(err);
+    console.log(err.message);
     return res.status(500).json({ success: false, message: "Server error" });
   }
 });
