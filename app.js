@@ -98,8 +98,16 @@ app.get("/users", async (req, res) => {
 
 // Create a new user
 app.post("/users", async (req, res) => {
-  console.log(req.body);
   try {
+    const { email } = req.body;
+
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res
+        .status(400)
+        .json({ message: "User with this email already exists" });
+    }
+
     const newUser = new User({
       ...req.body,
       isActive: false,
@@ -107,23 +115,50 @@ app.post("/users", async (req, res) => {
       activePlan: null,
       joinedDate: new Date(),
       lastLogin: new Date(),
-      id: Math.floor(Math.random() * 1000000), // Generate a random number for id
+      id: Math.floor(Math.random() * 10000000), // Generate a random number for id
     });
+
     const result = await newUser.save();
     res.send(result);
   } catch (err) {
-    console.log(err);
+    console.error(err);
+    res.status(500).json({ message: "Internal server error" });
   }
 });
 
 // Update user details
 app.put("/users/:id", async (req, res) => {
   const { name, phone, email, address } = req.body;
-  const user = await User.findOne({ id: req.params.id });
+  const user = await User.findById(req.params.id);
   if (name) user.name = name;
   if (phone) user.phone = phone;
   if (email) user.email = email;
   if (address) user.address = address;
+  const result = await user.save();
+  res.send(result);
+});
+
+//update complete details
+app.put("/userc/:id", async (req, res) => {
+  const {
+    name,
+    email,
+    address,
+    phone,
+    isActive,
+    activePlan,
+    planEndDate,
+    joinedDate,
+  } = req.body;
+  const user = await User.findById(req.params.id);
+  if (name) user.name = name;
+  if (phone) user.phone = phone;
+  if (email) user.email = email;
+  if (address) user.address = address;
+  if (isActive) user.isActive = isActive;
+  if (activePlan) user.activePlan.planName = activePlan;
+  if (planEndDate) user.activePlan.planEndDate = planEndDate;
+  if (joinedDate) user.joinedDate = joinedDate;
   const result = await user.save();
   res.send(result);
 });
@@ -138,14 +173,15 @@ app.post("/users/:id/plans", async (req, res) => {
 });
 
 // Fetch user details
-app.get("/users/:id", async (req, res) => {
-  console.log("asking", req.params.id);
+app.get("/user/:email", async (req, res) => {
+  console.log("asking", req.params.email);
   try {
-    const user = await User.findOne({ id: req.params.id });
+    const user = await User.findOne({ email: req.params.email });
     const today = new Date();
-    if (user.activePlan.planEndDate < today) {
+    if (user?.activePlan?.planEndDate < today) {
       user.isActive = false;
       user.activePlan = null;
+      user.planHistory.push(user.activePlan);
       const result = await user.save();
       res.send(result);
     } else {
@@ -158,7 +194,7 @@ app.get("/users/:id", async (req, res) => {
 
 //delete user
 app.delete("/users/:id", async (req, res) => {
-  const result = await User.deleteOne({ id: req.params.id });
+  const result = await User.findByIdAndDelete(req.params.id);
   res.send(result);
 });
 
@@ -249,6 +285,30 @@ app.get("/api/plans", async (req, res) => {
     console.error("Error getting plans:", error);
     res.status(500).json({ error: "Could not get the plans." });
   }
+});
+
+//buy a plan
+app.post("/api/buyplan/:id", async (req, res) => {
+  const id = req.params.id;
+  const { name, price, validity, image } = req.body;
+
+  const user = await User.findById(id);
+
+  const today = new Date();
+  const planEndDate = new Date(today);
+  planEndDate.setDate(today.getDate() + parseInt(validity, 10));
+  user.activePlan = {
+    planName: name,
+    planStartDate: today,
+    planEndDate: planEndDate,
+    planAmount: price,
+    planId: image,
+  };
+  user.isActive = true;
+
+  const result = await user.save();
+  if (result) res.json({ success: true });
+  else res.json({ success: false });
 });
 
 app.listen(3000, () => console.log("Server started on port 3000"));
