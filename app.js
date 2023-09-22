@@ -128,48 +128,71 @@ app.post("/users", async (req, res) => {
 
 // Update user details
 app.put("/users/:id", async (req, res) => {
-  const { name, phone, email, address } = req.body;
-  const user = await User.findById(req.params.id);
-  if (name) user.name = name;
-  if (phone) user.phone = phone;
-  if (email) user.email = email;
-  if (address) user.address = address;
-  const result = await user.save();
-  res.send(result);
+  try {
+    const { name, phone, email, address } = req.body;
+    const user = await User.findById(req.params.id);
+    
+    if (name) user.name = name;
+    if (phone) user.phone = phone;
+    if (email) user.email = email;
+    if (address) user.address = address;
+    
+    const result = await user.save();
+    res.send(result);
+  } catch (error) {
+    res.status(500).json({ error: "Internal server error" });
+  }
 });
 
-//update complete details
+// Update complete details
 app.put("/userc/:id", async (req, res) => {
-  const {
-    name,
-    email,
-    address,
-    phone,
-    isActive,
-    activePlan,
-    planEndDate,
-    joinedDate,
-  } = req.body;
-  const user = await User.findById(req.params.id);
-  if (name) user.name = name;
-  if (phone) user.phone = phone;
-  if (email) user.email = email;
-  if (address) user.address = address;
-  if (isActive) user.isActive = isActive;
-  if (activePlan) user.activePlan.planName = activePlan;
-  if (planEndDate) user.activePlan.planEndDate = planEndDate;
-  if (joinedDate) user.joinedDate = joinedDate;
-  const result = await user.save();
-  res.send(result);
+  try {
+    const {
+      name,
+      email,
+      address,
+      phone,
+      isActive,
+      activePlan,
+      planEndDate,
+      joinedDate,
+    } = req.body;
+    
+    const user = await User.findById(req.params.id);
+    
+    if (name) user.name = name;
+    if (phone) user.phone = phone;
+    if (email) user.email = email;
+    if (address) user.address = address;
+    if (isActive) user.isActive = isActive;
+    if (activePlan) user.activePlan.planName = activePlan;
+    if (planEndDate) user.activePlan.planEndDate = planEndDate;
+    if (joinedDate) user.joinedDate = joinedDate;
+    
+    const result = await user.save();
+    res.send(result);
+  } catch (error) {
+    res.status(500).json({ error: "Internal server error" });
+  }
 });
 
 // Add a new plan
 app.post("/users/:id/plans", async (req, res) => {
-  const user = await User.findOne({ id: req.params.id });
-  user.planHistory.push(req.body);
-  user.activePlan = req.body;
-  const result = await user.save();
-  res.send(result);
+  try {
+    const user = await User.findOne({ id: req.params.id });
+    
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    user.planHistory.push(req.body);
+    user.activePlan = req.body;
+    
+    const result = await user.save();
+    res.send(result);
+  } catch (error) {
+    res.status(500).json({ error: "Internal server error" });
+  }
 });
 
 // Fetch user details
