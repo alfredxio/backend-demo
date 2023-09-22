@@ -57,7 +57,7 @@ const adminSchema = new mongoose.Schema({
 const PlanSchema = new mongoose.Schema({
   name: String,
   price: String,
-  validity: String,
+  validity: Number,
   description: String,
 });
 
@@ -112,7 +112,7 @@ app.post("/users", async (req, res) => {
       ...req.body,
       isActive: false,
       planHistory: [],
-      activePlan: null,
+      activePlan: {},
       joinedDate: new Date(),
       lastLogin: new Date(),
       id: Math.floor(Math.random() * 10000000), // Generate a random number for id
@@ -289,26 +289,71 @@ app.get("/api/plans", async (req, res) => {
 
 //buy a plan
 app.post("/api/buyplan/:id", async (req, res) => {
-  const id = req.params.id;
-  const { name, price, validity, image } = req.body;
+  console.log("Buy plan requested by", req.params.id);
+  try {
+    const id = req.params.id;
+    const { name, price, validity, image } = req.body;
 
-  const user = await User.findById(id);
+    const user = await User.findById(id);
 
-  const today = new Date();
-  const planEndDate = new Date(today);
-  planEndDate.setDate(today.getDate() + parseInt(validity, 10));
-  user.activePlan = {
-    planName: name,
-    planStartDate: today,
-    planEndDate: planEndDate,
-    planAmount: price,
-    planId: image,
-  };
-  user.isActive = true;
+    if (!user) {
+      console.log("user not found");
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
+    }
 
-  const result = await user.save();
-  if (result) res.json({ success: true });
-  else res.json({ success: false });
+    const today = new Date();
+    let planEndDate;
+
+    if (isNaN(parseInt(validity, 10))) {
+      // If validity is not a number, find the details of the first plan
+      const firstPlan = await Plan.findOne({});
+      if (!firstPlan) {
+        console.log("No plans found");
+        return res
+          .status(404)
+          .json({ success: false, message: "No plans found" });
+      }
+
+      planEndDate = new Date(today);
+      planEndDate.setDate(today.getDate() + firstPlan.validity);
+
+      user.activePlan = {
+        planName: firstPlan.name,
+        planStartDate: today,
+        planEndDate: planEndDate,
+        planAmount: firstPlan.price,
+        planId: firstPlan.image ?? null,
+      };
+    } else {
+      // If validity is a number, proceed as before
+      const validityNumber = parseInt(validity, 10);
+      planEndDate = new Date(today);
+      planEndDate.setDate(today.getDate() + validityNumber);
+
+      user.activePlan = {
+        planName: name,
+        planStartDate: today,
+        planEndDate: planEndDate,
+        planAmount: price,
+        planId: image,
+      };
+    }
+
+    user.isActive = true;
+
+    const result = await user.save();
+    if (result) {
+      return res.json({ success: true });
+    } else {
+      return res.json({ success: false });
+    }
+  } catch (error) {
+    return res
+      .status(500)
+      .json({ success: false, message: "Internal server error" });
+  }
 });
 
 app.listen(3000, () => console.log("Server started on port 3000"));
