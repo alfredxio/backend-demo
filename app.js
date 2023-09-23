@@ -131,12 +131,12 @@ app.put("/users/:id", async (req, res) => {
   try {
     const { name, phone, email, address } = req.body;
     const user = await User.findById(req.params.id);
-    
+
     if (name) user.name = name;
     if (phone) user.phone = phone;
     if (email) user.email = email;
     if (address) user.address = address;
-    
+
     const result = await user.save();
     res.send(result);
   } catch (error) {
@@ -157,9 +157,9 @@ app.put("/userc/:id", async (req, res) => {
       planEndDate,
       joinedDate,
     } = req.body;
-    
+
     const user = await User.findById(req.params.id);
-    
+
     if (name) user.name = name;
     if (phone) user.phone = phone;
     if (email) user.email = email;
@@ -168,7 +168,7 @@ app.put("/userc/:id", async (req, res) => {
     if (activePlan) user.activePlan.planName = activePlan;
     if (planEndDate) user.activePlan.planEndDate = planEndDate;
     if (joinedDate) user.joinedDate = joinedDate;
-    
+
     const result = await user.save();
     res.send(result);
   } catch (error) {
@@ -180,14 +180,14 @@ app.put("/userc/:id", async (req, res) => {
 app.post("/users/:id/plans", async (req, res) => {
   try {
     const user = await User.findOne({ id: req.params.id });
-    
+
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
 
     user.planHistory.push(req.body);
     user.activePlan = req.body;
-    
+
     const result = await user.save();
     res.send(result);
   } catch (error) {
@@ -377,6 +377,39 @@ app.post("/api/buyplan/:id", async (req, res) => {
       .status(500)
       .json({ success: false, message: "Internal server error" });
   }
+});
+
+//verify otp
+app.post("/api/verifyotp/:phone", async (req, res) => {
+  const { email } = req.body;
+  const existingUser = await User.findOne({ email });
+  if (existingUser) {
+    return res
+      .status(400)
+      .json({ message: "User with this email already exists" });
+  }
+
+  const { phone } = req.params;
+  const otp = Math.floor(1000 + Math.random() * 9000);
+  const accountSid = "AC05efa6a764734ce364ec2cc57f5c828c";
+  const authToken = "6405a9d1fd2886dd1d7d2631a350ade3";
+  const client = require("twilio")(accountSid, authToken);
+  const message = `Your OTP for Purifier is ${otp}. Please do not share this with anyone.`;
+
+  client.messages
+    .create({
+      body: message,
+      from: "+12562865744",
+      to: phone,
+    })
+    .then((message) => {
+      console.log(`OTP sent to ${phone}: ${otp}`);
+      res.status(200).json({ message: "OTP sent successfully", otp });
+    })
+    .catch((error) => {
+      console.error("Error sending OTP:", error);
+      res.status(500).json({ message: "Failed to send OTP" });
+    });
 });
 
 app.listen(3000, () => console.log("Server started on port 3000"));
