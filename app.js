@@ -75,6 +75,8 @@ app.post("/authenticate", async (req, res) => {
       return res.json({ success: false, message: "User not found" });
     }
     if (user.password === password) {
+      user.lastLogin = new Date();
+      await user.save();
       return res.json({ success: true, message: "Authentication successful" });
     } else {
       return res.json({ success: false, message: "Authentication failed" });
