@@ -166,6 +166,12 @@ app.put("/userc/:id", async (req, res) => {
     if (address) user.address = address;
     if (isActive) user.isActive = isActive;
     if (activePlan) user.activePlan.planName = activePlan;
+    if (!isActive) {
+      if (user.activePlan) {
+        user.planHistory.push(user.activePlan);
+      }
+      user.activePlan = {};
+    }
     if (planEndDate) user.activePlan.planEndDate = planEndDate;
     if (joinedDate) user.joinedDate = joinedDate;
 
