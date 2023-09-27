@@ -400,7 +400,7 @@ app.post("/api/verifyotp/:phone", async (req, res) => {
   const { phone } = req.params;
   const otp = Math.floor(1000 + Math.random() * 9000);
   const accountSid = "AC05efa6a764734ce364ec2cc57f5c828c";
-  const authToken = "6405a9d1fd2886dd1d7d2631a350ade3";
+  const authToken = "90ff26ee340dce4ca692869258045bdb";
   const client = require("twilio")(accountSid, authToken);
   const message = `Your OTP for Purifier is ${otp}. Please do not share this with anyone.`;
 
