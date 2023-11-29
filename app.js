@@ -8,6 +8,11 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+const {
+  handlePaymentControllerPhone,
+  handleResponsePaymentController,
+} = require("./paymentController");
+
 mongoose.connect(
   "mongodb+srv://rohit45raj:Rohit_Raj_45@cluster0.c55os8w.mongodb.net/recharge",
   {
@@ -45,6 +50,12 @@ const userSchema = new mongoose.Schema({
     planStartDate: Date,
     planEndDate: Date,
     planAmount: Number,
+  },
+  lastPaymentStatus: {
+    order_id: String,
+    status: String,
+    amount: String,
+    date: String,
   },
   joinedDate: Date,
   lastLogin: Date,
@@ -96,6 +107,22 @@ app.get("/users", async (req, res) => {
     res.send(result);
   } catch (err) {
     console.log(err);
+  }
+});
+
+// Forgot Password
+app.post("/forgot-password", async (req, res) => {
+  const { email } = req.body;
+
+  try {
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.json({ success: false, message: "User not found" });
+    }
+  } catch (err) {
+    console.log(err.message);
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 });
 
@@ -320,6 +347,46 @@ app.get("/api/plans", async (req, res) => {
 });
 
 //buy a plan
+app.use(
+  "/api",
+  require("body-parser").urlencoded(),
+  express.Router().post("/response", handleResponsePaymentController)
+);
+
+app.post("/api/buyrequest/:id", async (req, res) => {
+  console.log("Buyerr plan requested by", req.params.id);
+  const { id } = req.params;
+  const amount = req.body.orderParams.amount;
+  const order_id = req.body.orderParams.order_id;
+  req.body.orderParams.merchant_param1 = id;
+  const date = new Date();
+  const status = "Pending";
+
+  const { payLink } = await handlePaymentControllerPhone(req);
+
+  try {
+    const user = await User.findById(id);
+    if (!user) {
+      return res.json({ success: false, message: "User not found" });
+    }
+    user.lastPaymentStatus = {
+      order_id,
+      status,
+      amount,
+      date,
+    };
+    await user.save();
+  } catch (err) {
+    console.log(err.message);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+
+  res.setHeader("content-type", "application/json");
+  res.status(200).json({
+    payLink,
+  });
+});
+
 app.post("/api/buyplan/:id", async (req, res) => {
   console.log("Buy plan requested by", req.params.id);
   try {
@@ -327,14 +394,13 @@ app.post("/api/buyplan/:id", async (req, res) => {
     const { name, price, validity, image } = req.body;
 
     const user = await User.findById(id);
-
     if (!user) {
       console.log("user not found");
       return res
         .status(404)
         .json({ success: false, message: "User not found" });
     }
-
+    user.lastPaymentStatus.status = "Paid";
     const today = new Date();
     let planEndDate;
 
@@ -377,6 +443,7 @@ app.post("/api/buyplan/:id", async (req, res) => {
 
     const result = await user.save();
     if (result) {
+      console.log("Plan bought successfully");
       return res.json({ success: true });
     } else {
       return res.json({ success: false });
@@ -419,7 +486,7 @@ app.post("/api/verifyotp/:phone", async (req, res) => {
       console.error("Error sending OTP:", error);
       res.status(200).json({ message: "fake otp", otp: 1737 });
       // res.status(500).json({ message: "Failed to send OTP" });
-    });
+   });
 });
 
 app.listen(3000, () => console.log("Server started on port 3000"));
