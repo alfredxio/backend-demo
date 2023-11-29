@@ -19,7 +19,7 @@ const handlePaymentControllerPhone = async (req) => {
     };
     const encryptedOrderData = ccav.getEncryptedOrder(orderParams);
     return {
-      payLink: `https://test.ccavenue.com/transaction/transaction.do?command=initiateTransaction&access_code=${process.env.access_code}&encRequest=${encryptedOrderData}`,
+      payLink: `https://secure.ccavenue.com/transaction/transaction.do?command=initiateTransaction&access_code=${process.env.access_code}&encRequest=${encryptedOrderData}`,
     };
   } catch (err) {
     console.log(err);
